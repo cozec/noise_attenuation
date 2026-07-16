@@ -1,5 +1,9 @@
 # Noise Attenuation
 
+**🔊 [Listen to all results online](https://cozec.github.io/noise_attenuation/)** —
+a demo page with inline audio players for every method (the ▶ links below open
+GitHub's file viewer instead, since GitHub strips audio players from READMEs).
+
 ## What is noise attenuation?
 
 Speech recorded in the real world is rarely clean — it arrives mixed with

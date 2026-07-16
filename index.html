@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noise Attenuation — listen to the results</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1f2328; --muted: #59636e;
+    --card: #f6f8fa; --border: #d1d9e0; --accent: #0969da;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1;
+      --card: #161b22; --border: #30363d; --accent: #4493f8;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0 auto; max-width: 880px; padding: 2rem 1.25rem 4rem;
+    background: var(--bg); color: var(--fg);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  h1 { font-size: 1.9rem; margin: 0 0 .25rem; }
+  h2 { font-size: 1.35rem; margin: 2.5rem 0 .5rem; border-bottom: 1px solid var(--border); padding-bottom: .3rem; }
+  p.sub { color: var(--muted); margin-top: 0; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 1rem 1.25rem; margin: 1rem 0;
+  }
+  .card h3 { margin: .1rem 0 .4rem; font-size: 1.05rem; }
+  .card .desc { color: var(--muted); font-size: .92rem; margin: 0 0 .6rem; }
+  audio { width: 100%; margin: .3rem 0 .8rem; }
+  img { max-width: 100%; height: auto; border-radius: 6px; display: block; margin: .4rem 0; }
+  code { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: .1em .35em; font-size: .9em; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid var(--border); padding: .45rem .7rem; text-align: left; font-size: .95rem; }
+  th { background: var(--card); }
+  a { color: var(--accent); }
+  details { margin: .4rem 0 1rem; }
+  summary { cursor: pointer; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<h1>Noise Attenuation</h1>
+<p class="sub">Four speech enhancement methods on the same noisy recording —
+listen and compare. Source &amp; code:
+<a href="https://github.com/cozec/noise_attenuation">cozec/noise_attenuation</a>,
+following the <a href="https://speechprocessingbook.aalto.fi/Enhancement/Noise_attenuation.html">Aalto
+Speech Processing Book</a>.</p>
+
+<p>Speech recorded in the real world arrives mixed with background noise.
+Noise attenuation tries to recover the clean speech from a single noisy
+recording: slice the signal into short overlapping frames (STFT), estimate how
+much of each time-frequency bin is noise, multiply each bin by a suppression
+gain, and resynthesize. The methods differ in <strong>how the gain is
+computed</strong>.</p>
+
+<h2>Input</h2>
+<div class="card">
+  <h3>Noisy test signal</h3>
+  <p class="desc">Speech in noise, 10&nbsp;s at 44.1&nbsp;kHz.</p>
+  <audio controls preload="none" src="audio/noisy_input.wav"></audio>
+  <img src="plots/waveform_noisy.png" alt="Noisy input waveform" loading="lazy">
+</div>
+
+<h2>1 · Spectral subtraction</h2>
+<div class="card">
+  <h3>G = √( max(|Y|² − N, 0) / |Y|² )</h3>
+  <p class="desc">Subtract the average noise power from each frame's power
+  spectrum. The zero-threshold on negative differences causes the classic
+  "musical noise" warble. Gentlest suppression of the four.</p>
+  <audio controls preload="none" src="audio/spectral_subtraction_enhanced.wav"></audio>
+  <img src="plots/waveform_spectral_subtraction.png" alt="Spectral subtraction waveform" loading="lazy">
+  <details><summary>Spectrogram (noisy vs enhanced)</summary>
+    <img src="plots/spectral_subtraction_spectrograms.png" alt="Spectral subtraction spectrograms" loading="lazy">
+  </details>
+</div>
+
+<h2>2 · Wiener filter</h2>
+<div class="card">
+  <h3>G = max(|Y|² − N, 0) / |Y|²</h3>
+  <p class="desc">The MMSE-optimal linear gain — same subtraction without the
+  square root, so it suppresses more aggressively at the same SNR. Still
+  memoryless, so musical noise remains.</p>
+  <audio controls preload="none" src="audio/wiener_enhanced.wav"></audio>
+  <img src="plots/waveform_wiener.png" alt="Wiener filter waveform" loading="lazy">
+  <details><summary>Spectrogram (noisy vs enhanced)</summary>
+    <img src="plots/wiener_spectrograms.png" alt="Wiener spectrograms" loading="lazy">
+  </details>
+</div>
+
+<h2>3 · Ephraim–Malah (MMSE-STSA)</h2>
+<div class="card">
+  <h3>Decision-directed a&nbsp;priori SNR + Bessel-function gain</h3>
+  <p class="desc">The statistically optimal short-time amplitude estimator
+  (1984). Its temporal smoothing (α = 0.98) makes the gain evolve smoothly
+  across frames — the strongest classical suppression, with the musical noise
+  largely gone.</p>
+  <audio controls preload="none" src="audio/ephraim_malah_enhanced.wav"></audio>
+  <img src="plots/waveform_ephraim_malah.png" alt="Ephraim-Malah waveform" loading="lazy">
+  <details><summary>Spectrogram (noisy vs enhanced)</summary>
+    <img src="plots/ephraim_malah_spectrograms.png" alt="Ephraim-Malah spectrograms" loading="lazy">
+  </details>
+</div>
+
+<h2>4 · DeepFilterNet3 (neural, pretrained)</h2>
+<div class="card">
+  <h3>Learned ERB-band gains + deep filtering</h3>
+  <p class="desc">A real-time deep-learning enhancer
+  (<a href="https://github.com/Rikorose/DeepFilterNet">Rikorose/DeepFilterNet</a>).
+  Predicts perceptual-band gains plus a complex multi-frame filter for the
+  low frequencies, removing noise even underneath the speech. Run here with
+  the authors' pretrained checkpoint.</p>
+  <audio controls preload="none" src="audio/deepfilternet_enhanced.wav"></audio>
+  <img src="plots/waveform_deepfilternet.png" alt="DeepFilterNet waveform" loading="lazy">
+  <details><summary>Spectrogram (noisy vs enhanced)</summary>
+    <img src="plots/deepfilternet_spectrograms.png" alt="DeepFilterNet spectrograms" loading="lazy">
+  </details>
+</div>
+
+<h2>Summary</h2>
+<p>Residual power in the noise-only frames of the test signal
+(lower = more noise removed):</p>
+<table>
+  <tr><th>Method</th><th>Noise-frame power</th><th>Character</th></tr>
+  <tr><td>Noisy input</td><td>64.1 dB</td><td>—</td></tr>
+  <tr><td>Spectral subtraction</td><td>60.2 dB</td><td>gentlest, most musical noise</td></tr>
+  <tr><td>Wiener</td><td>58.7 dB</td><td>stronger suppression, still musical noise</td></tr>
+  <tr><td>Ephraim–Malah</td><td>55.9 dB</td><td>strongest classical, smooth residual</td></tr>
+  <tr><td>DeepFilterNet3</td><td><strong>39.6 dB</strong></td><td>neural, far cleaner residual</td></tr>
+</table>
+<p>The classical methods form a clear progression, but all share the same
+limit: a stationary noise model and a real per-bin gain cannot remove noise
+that overlaps speech in time and frequency. The pretrained neural model —
+having learned speech structure from data — reduces noise by ~24&nbsp;dB,
+over 16&nbsp;dB beyond the best classical method.</p>
+
+</body>
+</html>
