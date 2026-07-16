@@ -112,7 +112,9 @@ computed</strong>.</p>
   (<a href="https://github.com/Rikorose/DeepFilterNet">Rikorose/DeepFilterNet</a>).
   Predicts perceptual-band gains plus a complex multi-frame filter for the
   low frequencies, removing noise even underneath the speech. Run here with
-  the authors' pretrained checkpoint.</p>
+  the authors' pretrained checkpoint; the input is level-normalized to
+  −9&nbsp;dBFS RMS before inference (the checkpoint suppresses speech on
+  quiet inputs) and the gain undone afterwards.</p>
   <audio controls preload="none" src="audio/deepfilternet_enhanced.wav"></audio>
   <img src="plots/waveform_deepfilternet.png" alt="DeepFilterNet waveform" loading="lazy">
   <details><summary>Spectrogram (noisy vs enhanced)</summary>
@@ -129,13 +131,13 @@ computed</strong>.</p>
   <tr><td>Spectral subtraction</td><td>60.2 dB</td><td>gentlest, most musical noise</td></tr>
   <tr><td>Wiener</td><td>58.7 dB</td><td>stronger suppression, still musical noise</td></tr>
   <tr><td>Ephraim–Malah</td><td>55.9 dB</td><td>strongest classical, smooth residual</td></tr>
-  <tr><td>DeepFilterNet3</td><td><strong>39.6 dB</strong></td><td>neural, far cleaner residual</td></tr>
+  <tr><td>DeepFilterNet3</td><td><strong>40.4 dB</strong></td><td>neural, far cleaner residual</td></tr>
 </table>
 <p>The classical methods form a clear progression, but all share the same
 limit: a stationary noise model and a real per-bin gain cannot remove noise
 that overlaps speech in time and frequency. The pretrained neural model —
 having learned speech structure from data — reduces noise by ~24&nbsp;dB,
-over 16&nbsp;dB beyond the best classical method.</p>
+over 15&nbsp;dB beyond the best classical method.</p>
 
 </body>
 </html>

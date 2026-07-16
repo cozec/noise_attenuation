@@ -153,15 +153,22 @@ flowchart LR
 ```mermaid
 flowchart LR
     WAV[enhancement_test.wav<br/>44.1 kHz] --> RS1[resample to 48 kHz]
-    RS1 --> STFT[STFT + ERB features]
+    RS1 --> NORM[normalize level<br/>to −9 dBFS RMS]
+    NORM --> STFT[STFT + ERB features]
     STFT --> ENC[encoder]
     ENC --> G[ERB gain decoder<br/>32-band gains]
     ENC --> DF[deep filtering decoder<br/>complex FIR per low-freq bin]
     G --> APPLY[apply to noisy spectrogram]
     DF --> APPLY
-    APPLY --> ISTFT[iSTFT] --> RS2[resample to 44.1 kHz]
+    APPLY --> ISTFT[iSTFT] --> RS2[resample to 44.1 kHz<br/>undo gain]
     RS2 --> OUT[results/deepfilternet_enhanced.wav]
 ```
+
+Note the **level normalization** step: the pretrained DeepFilterNet3
+checkpoint degrades badly on quiet inputs — on this file (−19 dBFS RMS) it
+suppressed the speech along with the noise. Normalizing the RMS to −9 dBFS
+before inference (and undoing the gain afterwards) restores clean speech;
+`src/deepfilternet_test.py` does this automatically.
 
 Setup (needs Python ≤ 3.11 for the prebuilt Rust extension):
 
@@ -188,7 +195,7 @@ signal (lower = more noise removed):
 | Spectral subtraction | 60.2 dB | gentlest, most musical noise |
 | Wiener | 58.7 dB | stronger suppression, still musical noise |
 | Ephraim–Malah | 55.9 dB | strongest classical, smooth residual |
-| DeepFilterNet3 (pretrained) | 39.6 dB | neural, far cleaner residual |
+| DeepFilterNet3 (pretrained) | 40.4 dB | neural, far cleaner residual |
 
 Takeaways:
 
@@ -200,7 +207,7 @@ Takeaways:
   noise spectrum and a real, per-bin gain — so they cannot remove noise that
   overlaps speech in time and frequency.
 - The pretrained DeepFilterNet3 is in a different league (~24 dB noise
-  reduction, over 16 dB beyond the best classical method) because it learned
+  reduction, over 15 dB beyond the best classical method) because it learned
   speech structure from data and filters complex spectra across multiple
   frames, removing noise even underneath the speech.
 - The spectral subtraction and Wiener outputs match the book's published

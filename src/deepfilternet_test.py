@@ -58,13 +58,21 @@ def main():
     print(f'loaded {filename}: {meta.num_frames} samples at {meta.sample_rate} Hz '
           f'-> resampled to {model_sr} Hz')
 
+    # Normalize input level before inference: this DeepFilterNet3 checkpoint
+    # degrades badly on quiet inputs (it starts suppressing the speech itself),
+    # so bring the RMS up to about -9 dBFS and undo the gain afterwards.
+    target_rms_db = -9.
+    rms_db = 20 * torch.log10(audio.pow(2).mean().sqrt() + 1e-12).item()
+    gain = 10 ** ((target_rms_db - rms_db) / 20)
+    print(f'input RMS {rms_db:.1f} dBFS -> applying {20*np.log10(gain):.1f} dB gain for inference')
+
     # Enhance
-    enhanced = enhance(model, df_state, audio)
+    enhanced = enhance(model, df_state, audio * gain)
 
     # Resample back to the input rate and save
     enhanced_out = resample(enhanced, model_sr, meta.sample_rate)
-    # load_audio returns floats in [-1, 1]; scale back to int16 range
-    out = enhanced_out.squeeze(0).numpy() * 32767
+    # load_audio returns floats in [-1, 1]; scale back to int16 range and undo the gain
+    out = enhanced_out.squeeze(0).numpy() * 32767 / gain
     out_wav = os.path.join(results_dir, 'deepfilternet_enhanced.wav')
     wavfile.write(out_wav, meta.sample_rate, np.clip(out, -32768, 32767).astype(np.int16))
     print(f'wrote {out_wav}')
