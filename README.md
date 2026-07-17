@@ -16,7 +16,7 @@ time-frequency bin is noise, multiply each bin by a suppression gain between
 the gain is computed**; modern neural methods replace the hand-derived gain
 rule with a learned network.
 
-This repo implements and compares four methods on the same noisy test signal,
+This repo implements and compares five methods on the same noisy test signal,
 following the Aalto Speech Processing Book chapter
 [Noise attenuation](https://speechprocessingbook.aalto.fi/Enhancement/Noise_attenuation.html):
 
@@ -26,6 +26,7 @@ following the Aalto Speech Processing Book chapter
 | 2 | Wiener filter | classical | MMSE-optimal linear power ratio |
 | 3 | Ephraim–Malah | classical | MMSE spectral amplitude, decision-directed |
 | 4 | DeepFilterNet3 | neural (pretrained) | learned ERB gains + deep filtering |
+| 5 | MossFormer2_SE_48K | neural (pretrained) | transformer masking, ClearerVoice-Studio |
 
 ## The test signal
 
@@ -184,6 +185,34 @@ python3.11 -m venv .venv-dfn
 
 ![DeepFilterNet: noisy input (top) vs enhanced output (bottom)](plots/deepfilternet_spectrograms.png)
 
+## 5. MossFormer2 (neural, pretrained) — `src/mossformer2_test.py`
+
+[MossFormer2_SE_48K](https://huggingface.co/alibabasglab/MossFormer2_SE_48K)
+from Alibaba's [ClearerVoice-Studio](https://github.com/modelscope/ClearerVoice-Studio)
+is a newer (2024) full-band 48 kHz enhancer built on the MossFormer2
+architecture — a gated single-head transformer with convolution-augmented
+joint self-attentions, plus a recurrent module — predicting a mask on the
+noisy spectrum. It is much larger than DeepFilterNet (~10× the parameters,
+not real-time on CPU) and outperforms it on the published VoiceBank+DEMAND
+benchmark (PESQ-NB 3.15 vs 3.03, SI-SDR 19.4 vs 15.7 dB).
+
+On our test signal it makes a different trade-off than DeepFilterNet3: it
+preserves the speech almost perfectly (correlation 0.96 vs 0.86 in the
+strongest speech segment, speech level essentially untouched, no input-level
+sensitivity) while removing somewhat less noise. Which output "wins" is a
+fidelity-vs-suppression choice — listen to both.
+
+```bash
+.venv-dfn/bin/pip install clearvoice
+.venv-dfn/bin/python src/mossformer2_test.py   # downloads the checkpoint on first run
+```
+
+[▶ Play MossFormer2 output](audio/mossformer2_enhanced.wav)
+
+![MossFormer2 waveform](plots/waveform_mossformer2.png)
+
+![MossFormer2: noisy input (top) vs enhanced output (bottom)](plots/mossformer2_spectrograms.png)
+
 ## Summary
 
 Residual power measured in the VAD-detected noise-only frames of the test
@@ -195,7 +224,8 @@ signal (lower = more noise removed):
 | Spectral subtraction | 60.2 dB | gentlest, most musical noise |
 | Wiener | 58.7 dB | stronger suppression, still musical noise |
 | Ephraim–Malah | 55.9 dB | strongest classical, smooth residual |
-| DeepFilterNet3 (pretrained) | 40.4 dB | neural, far cleaner residual |
+| MossFormer2_SE_48K (pretrained) | 51.3 dB | neural, best speech fidelity (corr 0.96) |
+| DeepFilterNet3 (pretrained) | 40.4 dB | neural, deepest suppression |
 
 Takeaways:
 
@@ -206,10 +236,12 @@ Takeaways:
 - All classical methods are limited by the same assumption — a stationary
   noise spectrum and a real, per-bin gain — so they cannot remove noise that
   overlaps speech in time and frequency.
-- The pretrained DeepFilterNet3 is in a different league (~24 dB noise
-  reduction, over 15 dB beyond the best classical method) because it learned
-  speech structure from data and filters complex spectra across multiple
-  frames, removing noise even underneath the speech.
+- The pretrained neural models are in a different league because they learned
+  speech structure from data. Between the two, it's a trade-off:
+  DeepFilterNet3 suppresses the most noise (~24 dB, over 15 dB beyond the best
+  classical method) but colors the speech slightly and is sensitive to input
+  level; MossFormer2 keeps the speech nearly bit-faithful (correlation 0.96)
+  while suppressing ~9 dB less.
 - The spectral subtraction and Wiener outputs match the book's published
   clips (correlation 0.999; the small deviation is the 2048-point FFT vs. the
   book's window-length FFT).
@@ -230,6 +262,7 @@ src/
   wiener_filtering.py           # standalone method 2
   ephraim_malah.py              # standalone method 3
   deepfilternet_test.py         # method 4: pretrained DeepFilterNet3 inference
+  mossformer2_test.py           # method 5: pretrained MossFormer2_SE_48K inference
   helper_functions.py           # stft / istft / halfsinewindow / zcr (from repo)
   frontend.py, Enhancer.py      # neural demo support code (from repo)
   models/                       # pretrained weights for the book's neural enhancers

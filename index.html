@@ -44,7 +44,7 @@
 <body>
 
 <h1>Noise Attenuation</h1>
-<p class="sub">Four speech enhancement methods on the same noisy recording —
+<p class="sub">Five speech enhancement methods on the same noisy recording —
 listen and compare. Source &amp; code:
 <a href="https://github.com/cozec/noise_attenuation">cozec/noise_attenuation</a>,
 following the <a href="https://speechprocessingbook.aalto.fi/Enhancement/Noise_attenuation.html">Aalto
@@ -122,6 +122,22 @@ computed</strong>.</p>
   </details>
 </div>
 
+<h2>5 · MossFormer2_SE_48K (neural, pretrained)</h2>
+<div class="card">
+  <h3>Transformer masking — ClearerVoice-Studio</h3>
+  <p class="desc">A newer (2024) full-band 48&nbsp;kHz enhancer from Alibaba's
+  <a href="https://github.com/modelscope/ClearerVoice-Studio">ClearerVoice-Studio</a>,
+  built on the MossFormer2 gated-transformer architecture. Larger and slower
+  than DeepFilterNet, but preserves the speech almost perfectly
+  (correlation 0.96) while removing somewhat less noise — a
+  fidelity-vs-suppression trade-off. Listen to both and compare.</p>
+  <audio controls preload="none" src="audio/mossformer2_enhanced.wav"></audio>
+  <img src="plots/waveform_mossformer2.png" alt="MossFormer2 waveform" loading="lazy">
+  <details><summary>Spectrogram (noisy vs enhanced)</summary>
+    <img src="plots/mossformer2_spectrograms.png" alt="MossFormer2 spectrograms" loading="lazy">
+  </details>
+</div>
+
 <h2>Summary</h2>
 <p>Residual power in the noise-only frames of the test signal
 (lower = more noise removed):</p>
@@ -131,13 +147,15 @@ computed</strong>.</p>
   <tr><td>Spectral subtraction</td><td>60.2 dB</td><td>gentlest, most musical noise</td></tr>
   <tr><td>Wiener</td><td>58.7 dB</td><td>stronger suppression, still musical noise</td></tr>
   <tr><td>Ephraim–Malah</td><td>55.9 dB</td><td>strongest classical, smooth residual</td></tr>
-  <tr><td>DeepFilterNet3</td><td><strong>40.4 dB</strong></td><td>neural, far cleaner residual</td></tr>
+  <tr><td>MossFormer2_SE_48K</td><td>51.3 dB</td><td>neural, best speech fidelity (corr 0.96)</td></tr>
+  <tr><td>DeepFilterNet3</td><td><strong>40.4 dB</strong></td><td>neural, deepest suppression</td></tr>
 </table>
 <p>The classical methods form a clear progression, but all share the same
 limit: a stationary noise model and a real per-bin gain cannot remove noise
-that overlaps speech in time and frequency. The pretrained neural model —
-having learned speech structure from data — reduces noise by ~24&nbsp;dB,
-over 15&nbsp;dB beyond the best classical method.</p>
+that overlaps speech in time and frequency. The pretrained neural models —
+having learned speech structure from data — go far beyond: DeepFilterNet3
+suppresses the most noise (~24&nbsp;dB), while MossFormer2 keeps the speech
+nearly untouched at a gentler ~13&nbsp;dB of suppression.</p>
 
 </body>
 </html>
