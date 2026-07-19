@@ -51,6 +51,41 @@ python3 -m venv .venv
 .venv/bin/python src/ephraim_malah.py          # -> results/ephraim_malah_enhanced.wav
 ```
 
+## Do methods 1–3 need a VAD?
+
+Yes — but only for **noise estimation**, not for the enhancement itself.
+
+All three classical gain rules are functions of the noise power spectrum
+`N(k)`. The noise is never observed in isolation, so before any gain can be
+computed we must decide *when the signal contains only noise* and measure it
+there. That decision is a voice activity detector (VAD). Our scripts use the
+simplest possible one — frame energy more than 3 dB below the mean marks a
+noise-only frame — and average the power spectra of those frames into `N(k)`.
+The gain formulas themselves (sections 1–3) are applied identically to every
+frame, speech or not; nothing in them references the VAD.
+
+Consequences worth knowing:
+
+- **The noise model bounds everything.** If the VAD mistakes speech for noise,
+  speech energy enters `N(k)` and gets subtracted from every frame (speech
+  distortion). If it is too conservative, `N(k)` is underestimated and noise
+  leaks through. All three methods share this failure mode because they share
+  the noise model.
+- **A VAD is not strictly required.** The chapter also demonstrates
+  *minimum statistics*: track the minimum power per frequency bin over a
+  sliding window — the minimum is almost surely a speech-free moment — and
+  use that as `N(k)` with a bias correction. Recursive variants (MCRA, IMCRA)
+  are standard in real-time systems. `src/noise_attenuation_classical.py`
+  computes both the VAD-mean and the minimum-statistics noise models
+  (`plots/03_noise_models.png` compares them).
+- **Stationarity is the real assumption.** We estimate `N(k)` once for the
+  whole 10 s file, which is fine for steady noise. Real-time systems instead
+  update the model continuously during detected pauses; none of the three
+  methods can track noise that changes *while* speech is active.
+- **Ephraim–Malah's decision-directed rule is not a VAD** — it smooths the
+  per-bin SNR estimate over time, but it still consumes the same `N(k)` from
+  the VAD-based estimator.
+
 ## 1. Spectral subtraction — `src/spectral_subtraction.py`
 
 The oldest and simplest approach: subtract the noise power estimate from the
